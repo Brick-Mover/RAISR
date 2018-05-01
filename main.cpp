@@ -1,31 +1,43 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
+#include "HashBuckets.h"
+#include <vector>
+#include <iostream>
 
 using namespace cv;
+using namespace std;
 
-int main(int argc, char** argv) {
+#define NNEIGHBOURS 3   // the length of patch's side, must be an odd number.
 
-    //create a gui window:
-    namedWindow("Output",1);
+inline void debug(Mat m)
+{
+    cout << "Rows: " << m.rows << ", Cols: " << m.cols << endl;
+    imshow("test image", m);
+}
 
-    //initialize a 120X350 matrix of black pixels:
-    Mat output = Mat::zeros( 120, 350, CV_8UC3 );
+// consider the n x n neighbors of each pixel, and cluster them
+void breakImg(HashBuckets* h, const int n)
+{
+    for (int r = n/2; r + n/2 < h->getImg()->rows; r++) {
+        for (int c = n/2; c + n/2 < h->getImg()->cols; c++) {
+            h->add(r - n/2, r + n/2, c - n/2, c + n/2);
+        }
+    }
+}
 
-    //write text on the matrix:
-    putText(output,
-            "Hello World :)",
-            cvPoint(15,70),
-            FONT_HERSHEY_PLAIN,
-            3,
-            cvScalar(0,255,0),
-            4);
+int main(int argc, char** argv)
+{
+    Mat src = imread("./imgs/Lenna.png", 0);
+    if (!src.data) { printf("Read input image error！ \n"); return false; }
 
-    //display the image:
-    imshow("Output", output);
+    Mat dst = src;
+    Mat patch = src(Rect(0, 0, 5, 5));
+    resize(src, dst, Size(), 2, 2, INTER_LINEAR);
 
-    //wait for the user to press any key:
-    waitKey(0);
-
-    return 0;
-
+    HashBuckets* h = new HashBuckets(src);
+    breakImg(h, NNEIGHBOURS);
+//    imshow("patch", patch);
+//    imshow("result1", src);
+//    imshow("result2", dst);
+//    waitKey(0);
 }
