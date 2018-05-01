@@ -9,10 +9,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_executable(test_cv main.cpp HashBuckets.cpp HashBuckets.h)
+add_executable(RAISR main.cpp HashBuckets.cpp HashBuckets.h)
 
 # add libs you need
 set(OpenCV_LIBS opencv_core opencv_imgproc opencv_highgui opencv_imgcodecs)
 
 # linking
-target_link_libraries(test_cv ${OpenCV_LIBS})
+target_link_libraries(RAISR ${OpenCV_LIBS})
