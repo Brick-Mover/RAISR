@@ -3,7 +3,7 @@
 using namespace std;
 using namespace cv;
 
-#define PI           3.14159265358979323846
+static float PI = 3.14159265f;
 
 inline void debug(Mat m)
 {
@@ -17,11 +17,12 @@ const int HashBuckets::PATCHLEN = 5;
 HashBuckets::HashBuckets(Mat src, int nBucket)
 {
     this->nBucket = nBucket;
-    this->img = src;
+    this->img = move(src);
     buckets.reserve(nBucket);
     spatialGradient(img, imgGx, imgGy);
     convertScaleAbs(imgGx, imgGx);
     convertScaleAbs(imgGy, imgGy);
+    bucketCnt.resize(24 * 3 * 3);
 }
 
 // get the hash value of the range
@@ -50,27 +51,31 @@ int HashBuckets::hash(int row, int col)
     float L1 = T/2 + powf(((T * T)/4 - D), 0.5);
     float L2 = T/2 - powf(((T * T)/4 - D), 0.5);
 
-    float angle;
+    float angle = PI / 2;
     if (b != 0) {
-        angle = atan2f(L1 - d, c);
+        angle += atan2f(L1 - d, c);
     } else if (c != 0) {
-        angle = atan2f(b, L1 - a);
+        angle += atan2f(b, L1 - a);
     } else if (b == 0 && c == 0) {
-        angle = atan2f(1, 0);
+        angle += atan2f(1, 0);
     } else {
         assert(false);
     }
-    angle += PI / 2;
     float coherence = ( sqrtf(L1) - sqrtf(L2) ) / ( sqrtf(L1) + sqrtf(L2) );
     float strength = sqrtf(L1);
-    fabs(angle + 0.01) / ( PI / 24 );
-    return 0;
+    int angleIdx = int(angle / ( PI / 24 ));
+    angleIdx = angleIdx > 23 ? 23 : (angleIdx < 0 ? 0 : angleIdx);
+    int strengthIdx = strength > 0.0001 ? 2 : (strength > 0.001 ? 1 : 0);
+    int coherenceIdx = coherence > 0.5 ? 2 : (coherence > 0.25 ? 1 : 0);
+
+    return angleIdx + coherenceIdx * 72 + strengthIdx * 24;
 }
 
-// the coordinate of the top left vertex of Rect
+
 void HashBuckets::add(int r, int c)
 {
     int index = hash(r, c);
+    bucketCnt[index]++;
 //    buckets[index % nBucket].push_back(img(Rect(r, c, PATCHLEN, PATCHLEN)));
 }
 
@@ -82,6 +87,9 @@ void HashBuckets::breakImg()
         for (int c = 0; c + PATCHLEN <= img.cols; c++) {
             this->add(r, c);
         }
+    }
+    for (int i = 0; i < bucketCnt.size(); i++) {
+        printf("%d: %d\n", i, bucketCnt[i]);
     }
 }
 
