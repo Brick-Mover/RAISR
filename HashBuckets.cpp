@@ -3,40 +3,45 @@
 using namespace std;
 using namespace cv;
 
-static float PI = 3.14159265f;
+static float PI = 3.141592653f;
 
-inline void debug(Mat m)
+const int HashBuckets::patchLen = 5;
+const float HashBuckets::sigma = 2.0f;
+
+
+HashBuckets::HashBuckets(Mat src, unsigned scale)
 {
-    cout << "Rows: " << m.rows << ", Cols: " << m.cols << endl;
-    imshow("test image", m);
-    waitKey();
-}
-
-const int HashBuckets::PATCHLEN = 5;
-
-HashBuckets::HashBuckets(Mat src, int nBucket)
-{
-    this->nBucket = nBucket;
+    this->scale = scale;
     this->img = move(src);
-    buckets.reserve(nBucket);
+    this->scale = scale;
+
     spatialGradient(img, imgGx, imgGy);
     convertScaleAbs(imgGx, imgGx);
     convertScaleAbs(imgGy, imgGy);
+    imgGx.convertTo(imgGx, CV_64F);
+    imgGx.convertTo(imgGy, CV_64F);
+    Mat k = getGaussianKernel(patchLen, sigma, CV_64F);
+    Mat W = k * k.t();      // n x n
+    this->W = W.reshape(0, 1);    // convert to 1 x n^2 array
+
     bucketCnt.resize(24 * 3 * 3);
 }
+
 
 // get the hash value of the range
 int HashBuckets::hash(int row, int col)
 {
     // number of channels remains the same, reshape to n^2 x 1 matrix
     // need to clone() cause ROI does not have consecutive memory
-    Mat patchGx = imgGx(Rect(row, col, PATCHLEN, PATCHLEN)).clone().reshape(0, PATCHLEN * PATCHLEN);
-    Mat patchGy = imgGy(Rect(row, col, PATCHLEN, PATCHLEN)).clone().reshape(0, PATCHLEN * PATCHLEN);
+    Mat patchGx = imgGx(Rect(row, col, patchLen, patchLen)).clone().reshape(0, patchLen * patchLen);
+    Mat patchGy = imgGy(Rect(row, col, patchLen, patchLen)).clone().reshape(0, patchLen * patchLen);
 
     Mat patchGrad;
-    hconcat(patchGx, patchGy, patchGrad);   // n x 2 matrix
-    patchGrad.convertTo(patchGrad, CV_32F); // convert to float point type for matrix multiplication
-    Mat GkTG = patchGrad.t() * patchGrad;  // 2 x 2 gradient matrix of pixel k
+    hconcat(patchGx, patchGy, patchGrad);   // n^2 x 2 matrix
+    Mat patchGradT = patchGrad.t();         // equivalent to multiplication by diagonal weight matrix
+    patchGradT.row(0) = patchGradT.row(0).mul(W);
+    patchGradT.row(1) = patchGradT.row(1).mul(W);
+    Mat GkTG = patchGradT * patchGrad;  // 2 x 2 gradient matrix of pixel k
 
     /*  Consider the eigenvalues and eigenvectors of
      *      | a   b |
@@ -63,7 +68,7 @@ int HashBuckets::hash(int row, int col)
     }
     float coherence = ( sqrtf(L1) - sqrtf(L2) ) / ( sqrtf(L1) + sqrtf(L2) );
     float strength = sqrtf(L1);
-    int angleIdx = int(angle / ( PI / 24 ));
+    auto angleIdx = int(angle / ( PI / 24 ));
     angleIdx = angleIdx > 23 ? 23 : (angleIdx < 0 ? 0 : angleIdx);
     int strengthIdx = strength > 0.0001 ? 2 : (strength > 0.001 ? 1 : 0);
     int coherenceIdx = coherence > 0.5 ? 2 : (coherence > 0.25 ? 1 : 0);
@@ -76,24 +81,19 @@ void HashBuckets::add(int r, int c)
 {
     int index = hash(r, c);
     bucketCnt[index]++;
-//    buckets[index % nBucket].push_back(img(Rect(r, c, PATCHLEN, PATCHLEN)));
+//    buckets[index % nBucket].push_back(img(Rect(r, c, patchLen, patchLen)));
 }
 
 
 // consider the n x n neighbors of each pixel, and cluster them
 void HashBuckets::breakImg()
 {
-    for (int r = 0; r + PATCHLEN <= img.rows; r++) {
-        for (int c = 0; c + PATCHLEN <= img.cols; c++) {
+    for (int r = 0; r + patchLen <= img.rows; r++) {
+        for (int c = 0; c + patchLen <= img.cols; c++) {
             this->add(r, c);
         }
     }
     for (int i = 0; i < bucketCnt.size(); i++) {
         printf("%d: %d\n", i, bucketCnt[i]);
     }
-}
-
-Mat* HashBuckets::getImg()
-{
-    return &img;
 }
