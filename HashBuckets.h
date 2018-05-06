@@ -8,13 +8,11 @@
 class HashBuckets {
 public:
     HashBuckets(cv::Mat img, unsigned scale);
-
-    void add(int r, int c);   // add the image in range to one bucket
-    int hash(int r, int c);   // get the hash value of the image in range
+    int hash(int r, int c, std::map<int, int>& s);   // get the hash value of the image in range
     void breakImg();        // break the image into patches
 
     static const int patchLen;  // must be an odd number
-    static const float sigma;   // the sigma value of the Gaussian filter
+    static const double sigma;   // the sigma value of the Gaussian filter
 
 private:
     // Members(images, image gradients, buckets, etc.)
