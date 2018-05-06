@@ -5,25 +5,21 @@ using namespace cv;
 
 static double PI = 3.141592653;
 
-const int HashBuckets::patchLen = 5;
 const double HashBuckets::sigma = 2.0f;
 
-
-HashBuckets::HashBuckets(Mat src, unsigned scale)
-{
+HashBuckets::HashBuckets(Mat src, unsigned scale, unsigned patchLen) {
+    if (patchLen % 2 == 0)
+        throw invalid_argument("patch size must be an odd number!");
     this->scale = scale;
     this->img = move(src);
     this->scale = scale;
+    this->patchLen = patchLen;
 
     spatialGradient(img, imgGx, imgGy);
     convertScaleAbs(imgGx, imgGx);
     convertScaleAbs(imgGy, imgGy);
     imgGx.convertTo(imgGx, CV_64F);
     imgGy.convertTo(imgGy, CV_64F);
-
-//    Mat t;
-//    normalize(imgGy, t, 0, 1, cv::NORM_MINMAX);
-//    imshow("test", t);
 
     Mat k = getGaussianKernel( patchLen, sigma, CV_64F);
     Mat W = k * k.t();      // n x n
@@ -34,12 +30,15 @@ HashBuckets::HashBuckets(Mat src, unsigned scale)
 
 
 // get the hash value of the range
-int HashBuckets::hash(int row, int col, map<int, int>& s)
-{
+int HashBuckets::hash(int r, int c) {
     // number of channels remains the same, reshape to n^2 x 1 matrix
     // need to clone() for ROI does not have consecutive memory
-    Mat patchGx = imgGx(Rect(row, col, patchLen, patchLen)).clone().reshape(0, patchLen * patchLen);
-    Mat patchGy = imgGy(Rect(row, col, patchLen, patchLen)).clone().reshape(0, patchLen * patchLen);
+    Mat patchGx = imgGx(Range(r - patchLen/2, r + patchLen/2 + 1),
+                        Range(c - patchLen/2, c + patchLen/2 + 1))
+                        .clone().reshape(0, patchLen * patchLen);
+    Mat patchGy = imgGy(Range(r - patchLen/2, r + patchLen/2 + 1),
+                        Range(c - patchLen/2, c + patchLen/2 + 1))
+                        .clone().reshape(0, patchLen * patchLen);
 
     Mat patchGrad;
     hconcat(patchGx, patchGy, patchGrad);   // n^2 x 2 matrix
@@ -57,37 +56,28 @@ int HashBuckets::hash(int row, int col, map<int, int>& s)
     double angle = atan2(eigenvectors.row(0).at<double>(1), eigenvectors.row(0).at<double>(0));
     if (angle < 0)
         angle += PI;
-    double coherence = ( sqrtf(L1) - sqrtf(L2) ) / ( sqrtf(L1) + sqrtf(L2) );
-    double strength = sqrtf(L1);
+    double coherence = ( sqrt(L1) - sqrt(L2) ) / ( sqrt(L1) + sqrt(L2) );
+    double strength = sqrt(L1);
     auto angleIdx = int(angle / ( PI / 24 ));
     angleIdx = angleIdx > 23 ? 23 : (angleIdx < 0 ? 0 : angleIdx);
-    int strengthIdx = strength > 12 ? 2 : (strength > 5 ? 1 : 0);
-    int coherenceIdx = coherence > 0.75 ? 2 : (coherence > 0.5 ? 1 : 0);
+    int strengthIdx = strength > 90 ? 2 : (strength > 25 ? 1 : 0);
+    int coherenceIdx = coherence > 0.7 ? 2 : (coherence > 0.5 ? 1 : 0);
 
 //    debugMat(GkTG);
-//    cout << L1 << " " << L2 << endl;
-//    cout << angle << " " << strength << " " << coherence << endl;
 
     return angleIdx + coherenceIdx * 72 + strengthIdx * 24;
 }
 
 
 // consider the n x n neighbors of each pixel, and cluster them
-void HashBuckets::breakImg()
-{
-    map<int, int> strength;
-
-//    this->hash(30, 15, strength);
-
-    for (int r = 0; r + patchLen <= img.rows/4; r++) {
-        for (int c = 0; c + patchLen <= img.cols/4; c++) {
-            int i = this->hash(r, c, strength);
+void HashBuckets::breakImg() {
+    for (int r = patchLen/2; r + patchLen/2 < img.rows; r++) {
+        for (int c = patchLen/2; c + patchLen/2 < img.cols; c++) {
+            int i = this->hash(r, c);
             bucketCnt[i]++;
         }
     }
     for (int i = 0; i < bucketCnt.size(); i++) {
         printf("%d: %d\n", i, bucketCnt[i]);
     }
-//    for (auto p : strength)
-//        cout << p.first << " " << p.second << endl;
 }
