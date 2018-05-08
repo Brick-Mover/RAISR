@@ -10,7 +10,7 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-    Mat src = imread("./imgs/Lenna.png", 0);
+    Mat src = imread("./imgs/im1.jpg", 0);
     if (!src.data)
     {
         printf("Read input image error! \n");
@@ -21,7 +21,7 @@ int main(int argc, char** argv)
     resize(src, dst, Size(), 2, 2, INTER_LINEAR);
 
 
-    HashBuckets* h = new HashBuckets(src, 4);
+    HashBuckets* h = new HashBuckets(src, 4, 5);
     h->breakImg();
 
 //    imshow("patch", patch);

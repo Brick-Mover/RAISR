@@ -29,8 +29,11 @@ HashBuckets::HashBuckets(Mat src, unsigned scale, unsigned patchLen) {
 }
 
 
-// get the hash value of the range
-int HashBuckets::hash(int r, int c) {
+// get the hash value of the patch centered at (r, c)
+// rot: -1 for not rotate, 0, 1, 2 for rotate 90/180/270 degrees
+// mirror: true for mirrored patch
+// this allows us to get 8x training examples
+int HashBuckets::hash(int r, int c, int rot, bool mirror) {
     // number of channels remains the same, reshape to n^2 x 1 matrix
     // need to clone() for ROI does not have consecutive memory
     Mat patchGx = imgGx(Range(r - patchLen/2, r + patchLen/2 + 1),
@@ -47,6 +50,13 @@ int HashBuckets::hash(int r, int c) {
     patchGradT.row(0) = patchGradT.row(0).mul(W);
     patchGradT.row(1) = patchGradT.row(1).mul(W);
     Mat GkTG = patchGradT * patchGrad;      // 2 x 2 gradient matrix of pixel
+
+    if (mirror)
+        flip(GkTG, GkTG, 1);
+    if (rot != -1) {
+        auto flag = static_cast<RotateFlags>(rot);
+        rotate(GkTG, GkTG, flag);
+    }
 
     Mat eigenvalues;
     Mat eigenvectors;
@@ -71,9 +81,24 @@ int HashBuckets::hash(int r, int c) {
 
 // consider the n x n neighbors of each pixel, and cluster them
 void HashBuckets::breakImg() {
+    int i = 0;
     for (int r = patchLen/2; r + patchLen/2 < img.rows; r++) {
         for (int c = patchLen/2; c + patchLen/2 < img.cols; c++) {
-            int i = this->hash(r, c);
+            i = this->hash(r, c, ROTATE_90_CLOCKWISE, true);
+            bucketCnt[i]++;
+            i = this->hash(r, c, ROTATE_90_COUNTERCLOCKWISE, true);
+            bucketCnt[i]++;
+            i = this->hash(r, c, ROTATE_180, true);
+            bucketCnt[i]++;
+            i = this->hash(r, c, -1, true);
+            bucketCnt[i]++;
+            i = this->hash(r, c, ROTATE_90_CLOCKWISE, false);
+            bucketCnt[i]++;
+            i = this->hash(r, c, ROTATE_90_COUNTERCLOCKWISE, false);
+            bucketCnt[i]++;
+            i = this->hash(r, c, ROTATE_180, false);
+            bucketCnt[i]++;
+            i = this->hash(r, c, -1, false);
             bucketCnt[i]++;
         }
     }

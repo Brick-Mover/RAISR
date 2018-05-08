@@ -7,7 +7,7 @@
 class HashBuckets {
 public:
     HashBuckets(cv::Mat img, unsigned scale, unsigned patchLen);
-    int hash(int r, int c);     // get the hash value of the image in range
+    int hash(int r, int c, int rot, bool flip);     // get the hash value of the image in range
     void breakImg();            // break the image into patches
 
     static const double sigma;  // the sigma value of the Gaussian filter
