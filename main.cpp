@@ -7,6 +7,9 @@
 using namespace cv;
 using namespace std;
 
+array<int,2> foo() {
+    return {1,2};
+};
 
 int main(int argc, char** argv)
 {
@@ -23,6 +26,7 @@ int main(int argc, char** argv)
 
     HashBuckets* h = new HashBuckets(src, 4, 5);
     h->breakImg();
+
 
 //    imshow("patch", patch);
 //    imshow("result1", src);

@@ -7,7 +7,7 @@
 class HashBuckets {
 public:
     HashBuckets(cv::Mat img, unsigned scale, unsigned patchLen);
-    int hash(int r, int c, int rot, bool flip);     // get the hash value of the image in range
+    std::array<int, 3> hash(int r, int c, int rot, bool flip);     // get the hash value of the image in range
     void breakImg();            // break the image into patches
 
     static const double sigma;  // the sigma value of the Gaussian filter
@@ -21,7 +21,7 @@ private:
     unsigned scale;     // the scaling ratio
     unsigned patchLen;  // the size of the patch
 
-    std::vector<int> bucketCnt;     // count the number of patches in each bucket
+    int bucketCnt[24][3][3];     // count the number of patches in each bucket
 };
 
 
