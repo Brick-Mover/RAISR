@@ -98,12 +98,12 @@ array<int, 3> HashBuckets::hash(int r, int c, int rot, bool mirror) {
 
 // consider the n x n neighbors of each pixel, and cluster them
 void HashBuckets::breakImg() {
-    array<int, 3> t = NULL;
+    array<int, 3> t;
     for (int r = patchLen/2; r + patchLen/2 < img.rows; r++) {
         for (int c = patchLen/2; c + patchLen/2 < img.cols; c++) {
             t = this->hash(r, c, -1, false);
             bucketCnt[t[0]][t[1]][t[2]]++;
-            for (bool b: { false, true }) {
+            for (bool b: {false, true}) {
                 t = this->hash(r, c, ROTATE_90_CLOCKWISE, b);
                 bucketCnt[t[0]][t[1]][t[2]]++;
                 t = this->hash(r, c, ROTATE_90_COUNTERCLOCKWISE, b);

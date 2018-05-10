@@ -1,6 +1,7 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "HashBuckets.h"
+#include "RAISR.h"
 #include <vector>
 #include <iostream>
 
@@ -19,17 +20,28 @@ int main(int argc, char** argv)
         printf("Read input image error! \n");
         return -1;
     }
+//    Mat rotateImage;
+//    Mat filppedImage;
+//    rotate(src, rotateImage, ROTATE_90_CLOCKWISE);
+//    flip(rotateImage, filppedImage, 1);
+//    imshow("original", src);
+//    imshow("rotated", rotateImage );
+//    imshow("filppedImage", filppedImage);
+//    waitKey(0);
 
     Mat dst;
     resize(src, dst, Size(), 2, 2, INTER_LINEAR);
 
 
-    HashBuckets* h = new HashBuckets(src, 4, 5);
+    HashBuckets* h = new HashBuckets(src, 4, 3);
     h->breakImg();
 
 
-//    imshow("patch", patch);
-//    imshow("result1", src);
-//    imshow("result2", dst);
-//    waitKey(0);
+//    Mat dst;
+//    resize(src, dst, Size(), 2, 2, INTER_LINEAR);
+//
+//
+//    HashBuckets* h = new HashBuckets(src, 4, 5);
+//    h->breakImg();
+
 }
