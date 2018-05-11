@@ -26,32 +26,56 @@ HashBuckets::HashBuckets(Mat src, unsigned scale, unsigned patchLen) {
 }
 
 
-// get the hash value of the patch centered at (r, c)
-// rot: -1 for not rotate, 0, 1, 2 for rotate 90/180/270 degrees
+// Get the hash value of the patch centered at (r, c)
+// rot: 0, 1, 2 for rotate 90/180/270 degrees, any other number will keep the original patch
 // mirror: true for mirrored patch
-// this allows us to get 8x training examples
+// This allows us to get 8x training examples
 array<int, 3> HashBuckets::hash(int r, int c, int rot, bool mirror) {
     // number of channels remains the same, reshape to n^2 x 1 matrix
     // need to clone() for ROI does not have consecutive memory
     Mat patchGx = imgGx(Range(r - patchLen/2, r + patchLen/2 + 1),
-                        Range(c - patchLen/2, c + patchLen/2 + 1))
-                        .clone();
+                        Range(c - patchLen/2, c + patchLen/2 + 1)).clone();
     Mat patchGy = imgGy(Range(r - patchLen/2, r + patchLen/2 + 1),
-                        Range(c - patchLen/2, c + patchLen/2 + 1))
-                        .clone();
+                        Range(c - patchLen/2, c + patchLen/2 + 1)).clone();
 
+    // Note the gradient of the rotated image is not the same as the rotated gradient,
+    // so we first use geometric relationship to get the new coordinate of the point (r, c).
+    // Also, as long as the center of the patch is determined, flip and transpose will not
+    // change the result of GTWG. (i.e. the commented section)
     if (mirror) {
         flip(patchGx, patchGx, 1);
         flip(patchGy, patchGy, 1);
+        patchGx *= -1;
     }
-    if (rot != -1) {
-        auto flag = static_cast<RotateFlags>(rot);
-        rotate(patchGx, patchGx, flag);
-        rotate(patchGy, patchGy, flag);
+
+    if (rot == ROTATE_90_CLOCKWISE) {
+        swap(patchGx, patchGy);
+//        transpose(patchGx, patchGx);
+//        flip(patchGx, patchGx, 1);
+        patchGx *= -1;
+//        transpose(patchGy, patchGy);
+//        flip(patchGy, patchGy, 1);
+    } else if (rot == ROTATE_90_COUNTERCLOCKWISE) {
+        swap(patchGx, patchGy);
+//        transpose(patchGx, patchGx);
+//        flip(patchGx, patchGx, 0);
+        patchGy *= -1;
+//        transpose(patchGy, patchGy);
+//        flip(patchGy, patchGy, 0);
+    } else if (rot == ROTATE_180) {
+//        flip(patchGx, patchGx, 1);
+//        flip(patchGx, patchGx, 0);
+//        patchGx *= -1;
+//        flip(patchGy, patchGy, 1);
+//        flip(patchGy, patchGy, 0);
+//        patchGy *= -1;
     }
+
+//debugMat(patchGx);
 
     patchGx = patchGx.reshape(0, patchLen * patchLen);
     patchGy = patchGy.reshape(0, patchLen * patchLen);
+
     Mat patchGrad;
     hconcat(patchGx, patchGy, patchGrad);   // n^2 x 2 matrix
 
@@ -59,7 +83,7 @@ array<int, 3> HashBuckets::hash(int r, int c, int rot, bool mirror) {
     patchGradT.row(0) = patchGradT.row(0).mul(W);
     patchGradT.row(1) = patchGradT.row(1).mul(W);
     Mat GTWG = patchGradT * patchGrad;      // 2 x 2 gradient matrix of pixel
-
+//    debugMat(patchGradT);
     /*  Consider the eigenvalues and eigenvectors of
      *      | a   b |
      *      | c   d |
@@ -89,20 +113,18 @@ array<int, 3> HashBuckets::hash(int r, int c, int rot, bool mirror) {
 
     auto angleIdx = int(angle / ( PI / 24 ));
     angleIdx = angleIdx > 23 ? 23 : (angleIdx < 0 ? 0 : angleIdx);
-    int strengthIdx = strength > 70 ? 2 : (strength > 30 ? 1 : 0);
-    int coherenceIdx = coherence > 0.5 ? 2 : (coherence > 0.25 ? 1 : 0);
+    int strengthIdx = strength > 45 ? 2 : (strength > 30 ? 1 : 0);
+    int coherenceIdx = coherence > 0.37 ? 2 : (coherence > 0.21 ? 1 : 0);
 
     return {angleIdx, coherenceIdx, strengthIdx};
 }
 
 
 // consider the n x n neighbors of each pixel, and cluster them
-void HashBuckets::breakImg() {
-    array<int, 3> t = NULL;
+void HashBuckets::breakImg(int rot, bool mirror) {
+    array<int, 3> t;
     for (int r = patchLen/2; r + patchLen/2 < img.rows; r++) {
         for (int c = patchLen/2; c + patchLen/2 < img.cols; c++) {
-            t = this->hash(r, c, -1, false);
-            bucketCnt[t[0]][t[1]][t[2]]++;
             for (bool b: { false, true }) {
                 t = this->hash(r, c, ROTATE_90_CLOCKWISE, b);
                 bucketCnt[t[0]][t[1]][t[2]]++;
@@ -116,12 +138,15 @@ void HashBuckets::breakImg() {
         }
     }
     for (int c = 0; c < 3; c++) {
+        int cohereCnt = 0;
         for (int s = 0; s < 3; s++) {
+            int strCnt = 0;
             for (int a = 0; a < 24; a++) {
-                printf("%d\t\t", bucketCnt[a][c][s]);
+                cohereCnt += bucketCnt[a][c][s]; strCnt += bucketCnt[a][c][s];
+                printf("%d\t", bucketCnt[a][c][s]);
             }
-            printf("\n");
+            printf("\n%d\n", strCnt);
         }
-        printf("\n");
+        printf("\n%d\n\n", cohereCnt);
     }
 }
