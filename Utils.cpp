@@ -53,3 +53,35 @@ bool matIsEqual(const cv::Mat mat1, const cv::Mat mat2) {
     return nz == 0;
 }
 
+void readListOfImage(string& dirPath, vector<Mat>& imageMatList) {
+    DIR *dir;
+    struct dirent *entry;
+    string filePath;
+    struct stat fileStat;
+
+    if ((dir = opendir (dirPath.c_str())) != NULL) {
+        //print all the files and directories within directory
+        while ((entry = readdir (dir)) != NULL) {
+            filePath= dirPath + "/" + entry->d_name;
+
+            // check if file is valid and check if file is not a directory
+            if (stat( filePath.c_str(), &fileStat )) continue;
+            if (S_ISDIR( fileStat.st_mode ))         continue;
+
+            cout<< "read image: " << filePath.c_str() << endl;
+
+            Mat currentImage = imread(filePath.c_str(), 0);
+            if (!currentImage.data) {
+                cout << "Read current image error!" << endl;
+                exit (EXIT_FAILURE);
+            }
+
+            imageMatList.push_back(currentImage);
+        }
+        closedir (dir);
+    } else {
+        cout << "Error opening directory" << endl;
+        exit (EXIT_FAILURE);
+    }
+
+}

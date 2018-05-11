@@ -11,6 +11,9 @@ public:
     void breakImg(int rot, bool mirror);            // break the image into patches
 
     static const double sigma;  // the sigma value of the Gaussian filter
+    static const int numOfAngle = 24;
+    static const int numOfStrength = 3;
+    static const int numOfCoherence = 3;
 
 private:
     // Members(images, image gradients, buckets, etc.)

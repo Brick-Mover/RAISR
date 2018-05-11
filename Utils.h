@@ -35,5 +35,5 @@ void debug(std::vector<T> v, bool newline=true)
 
 
 bool matIsEqual(const cv::Mat mat1, const cv::Mat mat2);
-
+void readListOfImage(std::string& dirPath, std::vector<cv::Mat>& imageMatList);
 #endif //RAISR_UTILS_H

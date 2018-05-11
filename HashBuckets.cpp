@@ -112,9 +112,10 @@ array<int, 3> HashBuckets::hash(int r, int c, int rot, bool mirror) {
     double strength = sqrt(L1);
 
     auto angleIdx = int(angle / ( PI / 24 ));
-    angleIdx = angleIdx > 23 ? 23 : (angleIdx < 0 ? 0 : angleIdx);
-    int strengthIdx = strength > 45 ? 2 : (strength > 30 ? 1 : 0);
-    int coherenceIdx = coherence > 0.37 ? 2 : (coherence > 0.21 ? 1 : 0);
+
+    angleIdx = angleIdx > 23 ? numOfAngle-1 : (angleIdx < 0 ? 0 : angleIdx);
+    int strengthIdx = strength > 45 ? numOfStrength-1 : (strength > 30 ? 1 : 0);
+    int coherenceIdx = coherence > 0.37 ? numOfStrength-1 : (coherence > 0.21 ? 1 : 0);
 
     return {angleIdx, coherenceIdx, strengthIdx};
 }
