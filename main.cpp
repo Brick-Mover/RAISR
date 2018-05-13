@@ -98,18 +98,18 @@ int main(int argc, char** argv) {
     imageList.clear();
     readListOfImage(dirPath, imageList);
     vector<Mat> downScaledImage;
-    vector<Mat> resultLRImageList;
-    vector<Mat> resultHRImageList;
-    model.test(imageList, downScaledImage, resultHRImageList, resultLRImageList);
+    vector<Mat> cheapScaledImageList;
+    vector<Mat> RAISRImageList;
+    model.test(imageList, downScaledImage, RAISRImageList, cheapScaledImageList);
     for(int i = 0; i < imageList.size(); i++){
         imshow("original", imageList[i]);
         imshow("downScaled", downScaledImage[i]);
-        imshow("LR", resultLRImageList[i]);
-        imshow("HR", resultHRImageList[i]);
+        imshow("cheapScale", cheapScaledImageList[i]);
+        imshow("RAISR", RAISRImageList[i]);
 
-        Mat LRDiff = resultLRImageList[i] - imageList[i];
-        Mat HRDiff = resultHRImageList[i] - imageList[i];
-        Mat enhenceDiff = resultLRImageList[i] - resultHRImageList[i];
+        Mat LRDiff = cheapScaledImageList[i] - imageList[i];
+        Mat HRDiff = RAISRImageList[i] - imageList[i];
+        Mat enhenceDiff = cheapScaledImageList[i] - RAISRImageList[i];
         double LRDiffvalue = sum(LRDiff)[0];
         double HRDiffvalue = sum(HRDiff)[0];
 
