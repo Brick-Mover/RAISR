@@ -10,10 +10,10 @@
 #include "opencv2/core.hpp"
 
 enum Rotation{
-    NO_ROTATION =-1,
-    ROTATE_90   = 0,
-    ROTATE_180  = 1,
-    ROTATE_270  = 2,
+    NO_ROTATION   =-1,
+    ROTATE_90     = 0,
+    ROTATE_180    = 1,
+    ROTATE_270    = 2,
 };
 
 enum Mirror{
@@ -43,5 +43,6 @@ cv::Mat downGrade(cv::Mat image, int scale);
 void fillBucketsMatrix(std::vector<std::vector<cv::Mat>>& ATA, std::vector<std::vector<cv::Mat>> & ATb, int hashValue, cv::Mat patch, double HRPixel, int pixelType);
 int getHashValue(HashBuckets & buckets, int r, int c, Rotation rotateFlag, Mirror mirror);
 
+cv::Mat conjugateGradientSolver(cv::Mat A, cv::Mat b);
 
 #endif //RAISR_RAISR_H

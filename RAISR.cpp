@@ -56,7 +56,6 @@ void RAISR::train() {
 //                cout << "r : " << r <<"," << "c : " << c <<endl << flush;
                 int pixelType = ((r-margin) % scale) * scale  + ((c-margin) % scale);
                 double HRPixel = HRImage.at<double>(r,c);
-                vector<Mat> patches;
 
                 // Range is left inclusive and right exclusive function
                 Mat patch = LRImage(
@@ -64,27 +63,15 @@ void RAISR::train() {
                         Range(c - margin, c + margin + 1)
                 ).clone();
 
-                patches.push_back(patch);
-
-                // operation on original patch
-                int hashValue = getHashValue(buckets, r, c, NO_ROTATION, NO_MIRROR);
-                fillBucketsMatrix(ATA, ATb, hashValue, patch, HRPixel, pixelType);
-
-                // operation on rotated patches and store them
-                for (Rotation rotateFlags = ROTATE_90 ; rotateFlags != NO_ROTATION; rotateFlags++){
-                    Mat rotatedPatch;
-                    rotate(patch, rotatedPatch, rotateFlags);
-                    hashValue = getHashValue(buckets, r, c, rotateFlags, NO_MIRROR);
-                    fillBucketsMatrix(ATA, ATb, hashValue, rotatedPatch, HRPixel, pixelType);
-                    patches.push_back(rotatedPatch);
-                }
-
-                // for each rotated patches, mirror it and do operation on it
-                for (int j = 0; j< patches.size(); j++){
-                    Mat mirroredPatch;
-                    flip(patches[j], mirroredPatch, 1);
-                    hashValue = getHashValue(buckets, r, c, NO_ROTATION, MIRROR);
-                    fillBucketsMatrix(ATA, ATb, hashValue, mirroredPatch, HRPixel, pixelType);
+                for (Mirror mirrorFlag: {Mirror::NO_MIRROR, Mirror::MIRROR}){
+                    if (mirrorFlag == MIRROR) flip(patch, patch, 1);
+                    for (Rotation rotateFlag: {Rotation::NO_ROTATION, Rotation::ROTATE_90, Rotation::ROTATE_180, Rotation::ROTATE_270}) {
+                        Mat rotatedPatch;
+                        if (rotateFlag == Rotation::NO_ROTATION) rotatedPatch = patch.clone();
+                        else rotate(patch, rotatedPatch, rotateFlag);
+                        int hashValue = getHashValue(buckets, r, c, rotateFlag, mirrorFlag);
+                        fillBucketsMatrix(ATA, ATb, hashValue, rotatedPatch, HRPixel, pixelType);
+                    }
                 }
             }
         }
@@ -93,7 +80,10 @@ void RAISR::train() {
     for (int i = 0 ; i< filterBuckets.size(); i++){
         for (int j = 0 ; j< numberOfFilters; j++){
             Mat currentEntryFilter;
+            if (ATA[i][j].empty()) continue;
             solve(ATA[i][j], ATb[i][j], currentEntryFilter, DECOMP_SVD);
+//            currentEntryFilter = conjugateGradientSolver(ATA[i][j], ATb[i][j]);
+//            cout << "i: "<< i << " j: "<< j << endl;
             filterBuckets[i][j] = currentEntryFilter;
         }
     }
@@ -111,6 +101,8 @@ void RAISR::test(vector<Mat> &imageMatList, vector<Mat> & downScaledImageList,ve
         int rows = image.rows;
         int cols = image.cols;
         int margin = patchLength/2;
+
+        cout << "rows: " << rows << " cols :" << cols << endl;
 
         // down-scale image
         Mat downScaledImage;
@@ -133,12 +125,14 @@ void RAISR::test(vector<Mat> &imageMatList, vector<Mat> & downScaledImageList,ve
         for (int r = margin; r<= rows - margin -1; r++) {
             for (int c = margin; c <= cols - margin - 1; c++) {
                 int pixelType = ((r-margin) % scale) * scale  + ((c-margin) % scale);
+                if (r == 485 && c == 5 ){
+                    cout << "p";
+                }
                 Mat patch = LRImage(
                         Range(r - margin, r + margin + 1),
                         Range(c - margin, c + margin + 1)
                 ).clone();
-                rows = patch.rows;
-                cols = patch.cols;
+
                 Mat flattedPatch = patch.reshape(0,1);
 
                 int hashValue = getHashValue(buckets, r, c, NO_ROTATION, NO_MIRROR);
@@ -146,7 +140,15 @@ void RAISR::test(vector<Mat> &imageMatList, vector<Mat> & downScaledImageList,ve
                     continue;
                 }
                 Mat filteredPixel = flattedPatch*filterBuckets[hashValue][pixelType];
+
+//                cout << HRImage.at<double>(r,c) << endl;
+//                cout << filteredPixel.at<double>(0,0) << endl;
+//                cout << "r : " << r << " c : "<< c <<endl;
+//                cout << HRImage.rows << "     " << HRImage.cols << endl;
+
                 HRImage.at<double>(r,c) = filteredPixel.at<double>(0,0);
+
+//                cout << HRImage.at<double>(r,c) << endl;
             }
         }
 
@@ -190,8 +192,6 @@ Mat downGrade(Mat image, int scale){
 
 
 void fillBucketsMatrix(vector<vector<Mat>> &ATA, vector<vector<Mat>> & ATb, int hashValue, Mat patch, double HRPixel, int pixelType){
-    int rows = patch.rows;
-    int cols = patch.cols;
 
     Mat flattedPatch = patch.reshape(0,1);
 
@@ -237,3 +237,21 @@ Rotation operator++( Rotation &c, int ) {
     ++c;
     return result;
 }
+
+Mat conjugateGradientSolver(Mat A, Mat b){
+    int rows = A.rows;
+    int cols = A.cols;
+    double sumOfA = sum(A)[0];
+
+    Mat result = Mat(rows ,1, CV_64F, double(0));
+    while (sumOfA >= 100){
+        if (determinant(A) < 1){
+            A = A + Mat::eye(rows, cols, CV_64F)* sumOfA*0.000000005;
+        }else{
+            result += A.inv() * b;
+            break;
+        }
+    }
+    return result;
+}
+

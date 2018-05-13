@@ -42,12 +42,25 @@ using namespace std;
 
 
 int main(int argc, char** argv) {
-//    Mat src = imread("./train_images/Lenna.png", CV_LOAD_IMAGE_COLOR );
+//    Mat src = imread("./train_images/cat.png", CV_LOAD_IMAGE_COLOR );
 //    if (!src.data)
 //    {
 //        printf("Read input image error! \n");
 //        return -1;
 //    }
+//    Mat tempImage = src.clone();
+//    flip(tempImage, tempImage, 1);
+//    rotate(tempImage, tempImage, RotateFlags::ROTATE_90_CLOCKWISE);
+//
+//    Mat anotherImage = src.clone();
+//    rotate(anotherImage, anotherImage,RotateFlags::ROTATE_90_CLOCKWISE);
+//    flip(anotherImage, anotherImage, 1);
+//
+//    imshow("oringinal", src);
+//    imshow("1", tempImage);
+//    imshow("2", anotherImage);
+//    waitKey(0);
+
 //
 //    Mat dst;
 //    resize(src, dst, Size(), 2, 2, INTER_LINEAR);
@@ -71,6 +84,10 @@ int main(int argc, char** argv) {
 //    imshow("result1", src);
 //    imshow("result2", dst);
 //    waitKey(0);
+
+
+//    Mat A = Mat::eye(4, 4, CV_64F);
+//    debugMat(A);
     string dirPath = "./train_images";
     vector<Mat> imageList;
     readListOfImage(dirPath, imageList);
@@ -89,6 +106,18 @@ int main(int argc, char** argv) {
         imshow("downScaled", downScaledImage[i]);
         imshow("LR", resultLRImageList[i]);
         imshow("HR", resultHRImageList[i]);
+
+        Mat LRDiff = resultLRImageList[i] - imageList[i];
+        Mat HRDiff = resultHRImageList[i] - imageList[i];
+        Mat enhenceDiff = resultLRImageList[i] - resultHRImageList[i];
+        double LRDiffvalue = sum(LRDiff)[0];
+        double HRDiffvalue = sum(HRDiff)[0];
+
+//        cout << "LR: "<< LRDiffvalue << " HR : "<< HRDiffvalue << endl;
+
+//        debugMat(LRDiff);
+//        debugMat(HRDiff);
+//        debugMat(enhenceDiff);
         waitKey(0);
     }
 
