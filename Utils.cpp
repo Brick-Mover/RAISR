@@ -7,8 +7,7 @@ using namespace std;
 using namespace cv;
 
 //https://stackoverflow.com/questions/10167534/how-to-find-out-what-type-of-a-mat-object-is-with-mattype-in-opencv
-string type2str(int type)
-{
+string type2str(int type) {
     string r;
 
     uchar depth = type & CV_MAT_DEPTH_MASK;
@@ -32,8 +31,7 @@ string type2str(int type)
 }
 
 
-void debugMat(Mat m)
-{
+void debugMat(Mat m) {
     cout << "Rows: " << m.rows << ", Cols: " << m.cols << endl;
     cout << "M = "<< endl << " "  << m << endl << endl;
     waitKey();

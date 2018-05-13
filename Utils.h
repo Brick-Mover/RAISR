@@ -6,16 +6,10 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/core.hpp"
 
-
-std::string type2str(int type);
-
-
 void debugMat(cv::Mat m);
 
-
 template<typename T>
-void debug(std::vector<T> v, bool newline=true)
-{
+void debug(std::vector<T> v, bool newline=true) {
     if (v.empty()) {
         std::cout << "{}";
     }
@@ -33,7 +27,8 @@ void debug(std::vector<T> v, bool newline=true)
         std::cout << std::endl;
 }
 
-
 bool matIsEqual(const cv::Mat mat1, const cv::Mat mat2);
 void readListOfImage(std::string& dirPath, std::vector<cv::Mat>& imageMatList);
+std::string type2str(int type);
+
 #endif //RAISR_UTILS_H
