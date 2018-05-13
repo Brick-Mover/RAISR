@@ -10,10 +10,10 @@
 #include "opencv2/core.hpp"
 
 enum Rotation{
-    NO_ROTATION =-1,
-    ROTATE_90   = 0,
-    ROTATE_180  = 1,
-    ROTATE_270  = 2,
+    NO_ROTATION   =-1,
+    ROTATE_90     = 0,
+    ROTATE_180    = 1,
+    ROTATE_270    = 2,
 };
 
 enum Mirror{
@@ -25,7 +25,7 @@ class RAISR {
 public:
     RAISR(std::vector<cv::Mat>& imageMatList, int scale, int patchLength, int gradientLength);
     void train();
-    void test(std::vector<cv::Mat> &imageMatList, std::vector<cv::Mat>& downScaledImageList, std::vector<cv::Mat>& resultHRImageList, std::vector<cv::Mat>& resultLRImageList);
+    void test(std::vector<cv::Mat> &imageMatList, std::vector<cv::Mat>& downScaledImageList, std::vector<cv::Mat>& RAISRImageList, std::vector<cv::Mat>& cheapScaledImageList);
 private:
     bool trained;
     int patchLength;
@@ -36,12 +36,12 @@ private:
 
 };
 
-Rotation& operator++( Rotation &c );
-Rotation operator++( Rotation &c, int );
-void imageOctuplicate(cv::Mat original, std::vector<cv::Mat> result);
+
+cv::Mat conjugateGradientSolver(cv::Mat A, cv::Mat b);
 cv::Mat downGrade(cv::Mat image, int scale);
 void fillBucketsMatrix(std::vector<std::vector<cv::Mat>>& ATA, std::vector<std::vector<cv::Mat>> & ATb, int hashValue, cv::Mat patch, double HRPixel, int pixelType);
 int getHashValue(HashBuckets & buckets, int r, int c, Rotation rotateFlag, Mirror mirror);
-
+Rotation& operator++( Rotation &c );
+Rotation operator++( Rotation &c, int );
 
 #endif //RAISR_RAISR_H
