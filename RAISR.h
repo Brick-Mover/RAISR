@@ -40,7 +40,8 @@ class RAISR {
 public:
     RAISR(std::vector<cv::Mat>& imageMatList, int scale, int patchLength, int gradientLength);
     void train();
-    void test(std::vector<cv::Mat> &imageMatList, std::vector<cv::Mat>& downScaledImageList, std::vector<cv::Mat>& RAISRImageList, std::vector<cv::Mat>& cheapScaledImageList);
+    void test(std::vector<cv::Mat> &imageMatList, std::vector<cv::Mat>& downScaledImageList, std::vector<cv::Mat>& RAISRImageList, std::vector<cv::Mat>& cheapScaledImageList, std::string CTBlendingType);
+    void testPrivateModuleMethod();
 private:
     bool trained; // flag indicating whether model is trained or not
     int patchLength; // length of a patch (patch is a size patchLength x patchLength pixel segment)
@@ -58,7 +59,9 @@ private:
 cv::Mat conjugateGradientSolver(cv::Mat A, cv::Mat b);
 cv::Mat downGrade(cv::Mat image, int scale);
 void fillBucketsMatrix(std::vector<std::vector<cv::Mat>>& ATA, std::vector<std::vector<cv::Mat>> & ATb, int hashValue, cv::Mat patch, double HRPixel, int pixelType);
+void flattenPatchBoundary(cv::Mat patch, std::vector<double>& flattenPatch);
 int getHashValue(HashBuckets & buckets, int r, int c, Rotation rotateFlag, Mirror mirror);
+int getLeastConnectedComponents(cv::Mat patch);
 Rotation& operator++( Rotation &c );
 Rotation operator++( Rotation &c, int );
 

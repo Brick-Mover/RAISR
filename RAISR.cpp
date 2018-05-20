@@ -131,7 +131,8 @@ void RAISR::train() {
 
 /************************************************************
  *  This is the test function which is used to test how the model
- *  works for the test image
+ *  works for the test image. CT blending is applied when construct the
+ *  predicted HR image
  *  notes: since RASIR is used to enhance the image during image upscaling
  *         so we here first downscale the image as true test sample
  *         then we apply our RAISR filters on the test sample to generate
@@ -142,9 +143,10 @@ void RAISR::train() {
  *          downScaledImageList   : downscaled image that is used as true test sample
  *          RAISRImageList        : High Resolution Image by applying learned filters on true test sample
  *          cheapScaledImageList  : Cheap upscaled Image by applying bilinear interpolation
+ *          CTBlendingType        : either "Randomness" or "CountOfBitsChanged"
  *  return: void
  */
-void RAISR::test(vector<Mat> &imageMatList, vector<Mat> & downScaledImageList, vector<Mat>& RAISRImageList, vector<Mat> &cheapScaledImageList) {
+void RAISR::test(vector<Mat> &imageMatList, vector<Mat> & downScaledImageList, vector<Mat>& RAISRImageList, vector<Mat> &cheapScaledImageList, string CTBlendingType) {
 
     if (not trained){
         cout << "you must train the model before test the model"<<endl;
@@ -210,13 +212,83 @@ void RAISR::test(vector<Mat> &imageMatList, vector<Mat> & downScaledImageList, v
             }
         }
 
+        // CTBlending process. The CT-patch is 3x3 square
+        margin = 3;
+        Mat HRImageCopy = HRImage.clone();
+        if (CTBlendingType != "None"){
+            for (int r = margin; r<= rows - margin -1; r++) {
+                for (int c = margin; c <= cols - margin - 1; c++) {
+                    // get each pixel's corresponding patch
+                    Mat LRPatch = LRImage(
+                            Range(r - margin, r + margin + 1),
+                            Range(c - margin, c + margin + 1)
+                    ).clone();
+
+                    Mat HRPatch =  HRImage(
+                            Range(r - margin, r + margin + 1),
+                            Range(c - margin, c + margin + 1)
+                    ).clone();
+
+                    // Census transform
+                    for (int i = 0 ; i < margin; i++){
+                        for (int j = 0 ; j < margin ; j++){
+                            if (i == 1 and j == 1) continue;
+                            LRPatch.at<double>(i,j) = LRPatch.at<double>(i,j) > LRPatch.at<double>(1,1) ? 1.0:0.0;
+                            HRPatch.at<double>(i,j) = HRPatch.at<double>(i,j) > HRPatch.at<double>(1,1) ? 1.0:0.0;
+                        }
+                    }
+
+                    double maxCount = (double)(margin*margin-4);
+                    if (CTBlendingType=="Randomness"){
+                        double LRCount = (double)getLeastConnectedComponents(LRPatch);
+                        double weight = LRCount*2.0/maxCount;
+                        HRImageCopy.at<double>(r,c) = LRImage.at<double>(r,c) + weight*(HRImage.at<double>(r,c) - LRImage.at<double>(r,c));
+
+                    } else if (CTBlendingType == "CountOfBitsChanged"){
+                        vector<double>HRFlattenPatch;
+                        vector<double>LRFlattenPatch;
+                        flattenPatchBoundary(HRPatch, HRFlattenPatch);
+                        flattenPatchBoundary(LRPatch, LRFlattenPatch);
+                        double countOfBitsChanged = 0.0 ;
+                        for (int k = 0 ; k<HRFlattenPatch.size(); k++){
+                            if (HRFlattenPatch[k] != LRFlattenPatch[k]) countOfBitsChanged+=1.0;
+                        }
+                        double weight = countOfBitsChanged/maxCount;
+
+                        HRImageCopy.at<double>(r,c) = LRImage.at<double>(r,c) + weight*(HRImage.at<double>(r,c) - LRImage.at<double>(r,c));
+
+                    }else{
+                        cout<<"invalid blending type, so no blending applied" << endl;
+                        break;
+                    }
+                }
+            }
+        }
 
         Mat resultHRImage;
-        convertScaleAbs(HRImage, resultHRImage);
+        convertScaleAbs(HRImageCopy, resultHRImage);
         RAISRImageList.push_back(resultHRImage);
     }
 
     cout << "test process done "<< endl << flush;
+
+}
+
+void RAISR::testPrivateModuleMethod() {
+    double dummy_query_data[] = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
+    double another[] = { 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    cv::Mat dummy_query = cv::Mat(3, 3, CV_64F, dummy_query_data);
+    cv::Mat another_mat = cv::Mat(3, 3, CV_64F, another);
+    cout << another_mat << endl;
+
+    vector<double> flatten;
+    flattenPatchBoundary(another_mat, flatten);
+    for (int i = 0 ; i< flatten.size(); i++){
+        cout << flatten[i] << endl;
+    }
+
+    cout << getLeastConnectedComponents(another_mat);
+
 
 }
 
@@ -352,3 +424,58 @@ Mat conjugateGradientSolver(Mat A, Mat b){
     return result;
 }
 
+void flattenPatchBoundary(Mat patch, vector<double>& flattenPatch){
+    int rows = patch.rows;
+    int cols = patch.cols;
+    int dr[] = {0, 1, 0, -1};
+    int dc[] = {1, 0, -1, 0};
+    int numberOfSteps = (rows*2 + cols*2 -4);
+    int r = 0;
+    int c = 0;
+    int dir_index = 0;
+
+    // flatten the patch
+    for (int i = 0; i< numberOfSteps; i++){
+        double value = patch.at<double>(r,c);
+        flattenPatch.push_back(value);
+        int nr = r+ dr[dir_index%4];
+        int nc = c+ dc[dir_index%4];
+        if (nr<0 || nr >= rows || nc < 0 || nc >= cols) {
+            dir_index += 1;
+        }
+        r = r+ dr[dir_index%4];
+        c = c+ dc[dir_index%4];
+    }
+}
+
+int getLeastConnectedComponents(Mat patch){
+
+    int rows = patch.rows;
+    int cols = patch.cols;
+    int numberOfSteps = (rows*2 + cols*2 -4);
+    vector<double> flattenPatch;
+    int i =0;
+
+    flattenPatchBoundary(patch, flattenPatch);
+    i = 0;
+    for (; i< numberOfSteps; i++){
+        if (flattenPatch[i] != flattenPatch[(i+1)%numberOfSteps]) break;
+    }
+    if(i == numberOfSteps) return 0;
+    int count = numberOfSteps;
+    i+=1;
+    int j = 0;
+    while (j < numberOfSteps){
+        int tempCount = 1;
+        while (j < numberOfSteps && flattenPatch[i%numberOfSteps] == flattenPatch[(i+1)%numberOfSteps]){
+            tempCount +=1;
+            i++;
+            j++;
+        }
+         count = count > tempCount ? tempCount : count;
+        i++;
+        j++;
+    }
+
+    return count;
+}

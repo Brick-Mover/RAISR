@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
     vector<Mat> downScaledImage;
     vector<Mat> cheapScaledImageList;
     vector<Mat> RAISRImageList;
-    model.test(imageList, downScaledImage, RAISRImageList, cheapScaledImageList);
+    model.test(imageList, downScaledImage, RAISRImageList, cheapScaledImageList,"Randomness");
     for(int i = 0; i < imageList.size(); i++){
         imshow("original", imageList[i]);
         imshow("downScaled", downScaledImage[i]);
@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
         double LRDiffvalue = sum(LRDiff)[0];
         double HRDiffvalue = sum(HRDiff)[0];
 
-//        cout << "LR: "<< LRDiffvalue << " HR : "<< HRDiffvalue << endl;
+        cout << "LRPixelDiffValue: "<< LRDiffvalue << " HRPixelDiffValue : "<< HRDiffvalue << endl;
 
 //        debugMat(LRDiff);
 //        debugMat(HRDiff);
