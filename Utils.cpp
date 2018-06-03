@@ -54,7 +54,7 @@ bool matIsEqual(const cv::Mat mat1, const cv::Mat mat2) {
     return nz == 0;
 }
 
-void readListOfImage(string& dirPath, vector<Mat>& imageMatList) {
+void readListOfImage(string& dirPath, vector<Mat>& imageMatList, vector<string>& imageNameList) {
     DIR *dir;
     struct dirent *entry;
     string filePath;
@@ -65,11 +65,13 @@ void readListOfImage(string& dirPath, vector<Mat>& imageMatList) {
         while ((entry = readdir (dir)) != NULL) {
             filePath= dirPath + "/" + entry->d_name;
 
+
             // check if file is valid and check if file is not a directory
             if (stat( filePath.c_str(), &fileStat )) continue;
             if (S_ISDIR( fileStat.st_mode ))         continue;
 
             cout<< "read image: " << filePath.c_str() << endl;
+            imageNameList.push_back(string(entry->d_name));
 
             Mat currentImage = imread(filePath.c_str(), 0);
             if (!currentImage.data) {

@@ -1,5 +1,12 @@
+#include <algorithm>
 #include <assert.h>
+#include <ctime>
+#include <fstream>
+#include <iostream>
+#include <iterator>
 #include "RAISR.h"
+#include <sstream>
+
 using namespace std;
 using namespace cv;
 
@@ -146,7 +153,7 @@ void RAISR::train() {
  *          CTBlendingType        : either "Randomness" or "CountOfBitsChanged"
  *  return: void
  */
-void RAISR::test(vector<Mat> &imageMatList, vector<Mat> & downScaledImageList, vector<Mat>& RAISRImageList, vector<Mat> &cheapScaledImageList, string CTBlendingType) {
+void RAISR::test(bool downScale, vector<Mat> &imageMatList, vector<Mat> & downScaledImageList, vector<Mat>& RAISRImageList, vector<Mat> &cheapScaledImageList, string CTBlendingType) {
 
     if (not trained){
         cout << "you must train the model before test the model"<<endl;
@@ -157,21 +164,33 @@ void RAISR::test(vector<Mat> &imageMatList, vector<Mat> & downScaledImageList, v
 
     for (int i= 0 ; i < imageMatList.size(); i++){
         Mat image = imageMatList[i];
+        Mat LRImage;
         int rows = image.rows;
         int cols = image.cols;
         int margin = patchLength/2;
 
-        // downscale image to generate the true test sample
-        Mat downScaledImage;
-        Size ImageSize = Size(cols/scale, rows/scale);
-        resize(image, downScaledImage, ImageSize, 0, 0, INTER_CUBIC);
-        downScaledImageList.push_back(downScaledImage);
+        if (downScale){
+            // downscale image to generate the true test sample
+            Mat downScaledImage;
+            Size ImageSize = Size(cols/scale, rows/scale);
+            resize(image, downScaledImage, ImageSize, 0, 0, INTER_CUBIC);
+            downScaledImageList.push_back(downScaledImage);
 
-        // cheap upscale the image
-        Mat LRImage;
-        ImageSize = Size(cols, rows);
-        resize(downScaledImage, LRImage, ImageSize, 0, 0, INTER_LINEAR);
-        cheapScaledImageList.push_back(LRImage.clone());
+            // cheap upscale the image
+
+            ImageSize = Size(cols, rows);
+            resize(downScaledImage, LRImage, ImageSize, 0, 0, INTER_LINEAR);
+            cheapScaledImageList.push_back(LRImage.clone());
+        }else{
+
+            // just cheap upscale the image
+            rows *=scale;
+            cols *=scale;
+            Size ImageSize = Size(cols, rows);
+            resize(image, LRImage, ImageSize, 0, 0, INTER_LINEAR);
+            cheapScaledImageList.push_back(LRImage.clone());
+
+        }
 
         // construct the HashBuckets
         HashBuckets buckets(LRImage.clone(), (unsigned) scale,(unsigned) gradientLength);
@@ -290,6 +309,84 @@ void RAISR::testPrivateModuleMethod() {
     cout << getLeastConnectedComponents(another_mat);
 
 
+}
+
+void RAISR::writeOutFilter(string& outPath){
+    if (!trained ){
+        cout<< "model is not trained, you cannot serialize current filter" << endl;
+        exit(-1);
+    }
+    ofstream outfile;
+    string outFilePath;
+    std::time_t t = std::time(0);   // get time now
+    std::tm* now = std::localtime(&t);
+    outFilePath = outPath + "/"+ to_string(now->tm_year+1900) + "_" + to_string(now->tm_mon + 1) + "_"
+                  + to_string(now->tm_mday) + "_"
+                  + to_string(now->tm_hour) + "_"
+                  + to_string(now->tm_min)  + "_"
+                  + to_string(now->tm_sec)  + ".filter";
+    cout<< " file wil be stored at "<< outFilePath << endl;
+    outfile.open (outFilePath.c_str());
+    int size = (int) filterBuckets.size();
+    int inner_size = (int) filterBuckets[0].size();
+    int rows = filterBuckets[0][0].rows;
+    int cols = filterBuckets[0][0].cols;
+    outfile << to_string(size) << " "<< to_string(inner_size) << " " << to_string(rows) << " " << to_string(cols) << " "<< endl;
+    for(int i = 0 ; i < size; i++){
+        for (int j = 0 ; j< inner_size ; j++){
+            for (int r = 0 ; r < rows; r++){
+                for (int c = 0; c < cols; c++){
+                    outfile << to_string(filterBuckets[i][j].at<double>(r, c))<< " ";
+                }
+            }
+            outfile << endl;
+        }
+    }
+//    outfile << "Writing this to a file.\n";
+    outfile.close();
+
+}
+void RAISR::readInFilter(string& inPath){
+
+    string line;
+    ifstream infile (inPath);
+    if (infile.is_open()) {
+
+        getline(infile, line);
+        istringstream iss(line);
+        vector<string> tokens{istream_iterator<string>{iss},
+                              istream_iterator<string>{}};
+        int size = stoi(tokens[0].c_str());
+        int inner_size = stoi(tokens[1].c_str());
+        int rows = stoi(tokens[2].c_str());
+        int cols = stoi(tokens[3].c_str());
+        if (rows!= patchLength*patchLength){
+            cout << "filter file is not compatible with current patchLength, please check"<<endl;
+            exit(-1);
+        }
+
+        int i = 0;
+        while ( getline (infile,line) ) {
+            int k = 0;
+            istringstream new_iss(line);
+            vector<string> new_tokens{istream_iterator<string>{new_iss},
+                                      istream_iterator<string>{}};
+            Mat currentMat(rows, cols, CV_64F);
+            for (int r = 0 ; r < rows; r++){
+                for (int c = 0 ; c < cols; c++){
+                    currentMat.at<double>(r,c) = stod(new_tokens[k].c_str());
+                    k++;
+                }
+            }
+            filterBuckets[i/inner_size][i%inner_size] = currentMat;
+            i++;
+
+        }
+        infile.close();
+    }
+    else cout << "Unable to open file";
+
+    trained = true;
 }
 
 /************************************************************

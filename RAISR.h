@@ -40,8 +40,17 @@ class RAISR {
 public:
     RAISR(std::vector<cv::Mat>& imageMatList, int scale, int patchLength, int gradientLength);
     void train();
-    void test(std::vector<cv::Mat> &imageMatList, std::vector<cv::Mat>& downScaledImageList, std::vector<cv::Mat>& RAISRImageList, std::vector<cv::Mat>& cheapScaledImageList, std::string CTBlendingType);
+    void test(
+            bool downSacle,
+            std::vector<cv::Mat> &imageMatList,
+            std::vector<cv::Mat>& downScaledImageList,
+            std::vector<cv::Mat>& RAISRImageList,
+            std::vector<cv::Mat>& cheapScaledImageList,
+            std::string CTBlendingType
+    );
     void testPrivateModuleMethod();
+    void writeOutFilter(std::string& outPath);
+    void readInFilter(std::string& inPath);
 private:
     bool trained; // flag indicating whether model is trained or not
     int patchLength; // length of a patch (patch is a size patchLength x patchLength pixel segment)

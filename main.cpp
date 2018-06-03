@@ -42,83 +42,40 @@ using namespace std;
 
 
 int main(int argc, char** argv) {
-//    Mat src = imread("./train_images/cat.png", CV_LOAD_IMAGE_COLOR );
-//    if (!src.data)
-//    {
-//        printf("Read input image error! \n");
-//        return -1;
-//    }
-//    Mat tempImage = src.clone();
-//    flip(tempImage, tempImage, 1);
-//    rotate(tempImage, tempImage, RotateFlags::ROTATE_90_CLOCKWISE);
-//
-//    Mat anotherImage = src.clone();
-//    rotate(anotherImage, anotherImage,RotateFlags::ROTATE_90_CLOCKWISE);
-//    flip(anotherImage, anotherImage, 1);
-//
-//    imshow("oringinal", src);
-//    imshow("1", tempImage);
-//    imshow("2", anotherImage);
-//    waitKey(0);
 
-//
-//    Mat dst;
-//    resize(src, dst, Size(), 2, 2, INTER_LINEAR);
-//
-//    int patchLen = 5;
-//
-//    int r = patchLen/2 + 100, c = patchLen/2 + 100;
-//
-//    int rot = ROTATE_90_COUNTERCLOCKWISE;
-//    bool mirror = true;
-//
-//    Mat srcCopy;
-//    src.copyTo(srcCopy);
-//    foo(srcCopy, r, c, mirror, rot, patchLen);
-
-//    HashBuckets* h = new HashBuckets(src, 2, patchLen);
-//    h->breakImg(rot, mirror);
-
-
-//    imshow("patch", patch);
-//    imshow("result1", src);
-//    imshow("result2", dst);
-//    waitKey(0);
-
-
-//    Mat A = Mat::eye(4, 4, CV_64F);
-//    debugMat(A);
     string dirPath = "./train_images";
+    string outPath = "./result_images";
+    string filterPath = "./filters";
     vector<Mat> imageList;
-    readListOfImage(dirPath, imageList);
-    RAISR model(imageList, 2, 11, 9);
-    model.train();
+    vector<string> imageNameList;
+    readListOfImage(dirPath, imageList, imageNameList);
+    RAISR model(imageList, 4, 11, 9);
 
+//    string filterFilePath = "./filters/2018_5_31_19_40_15_scale_2.filter";
+//    model.readInFilter(filterFilePath);
+    model.train();
+    model.writeOutFilter(filterPath);
     dirPath = "./test_images";
+
+
     imageList.clear();
-    readListOfImage(dirPath, imageList);
-    vector<Mat> downScaledImage;
+    imageNameList.clear();
+    readListOfImage(dirPath, imageList, imageNameList);
+    vector<Mat> downScaledImageList;
     vector<Mat> cheapScaledImageList;
     vector<Mat> RAISRImageList;
-    model.test(imageList, downScaledImage, RAISRImageList, cheapScaledImageList,"Randomness");
+    model.test(true, imageList, downScaledImageList, RAISRImageList, cheapScaledImageList,"None");
     for(int i = 0; i < imageList.size(); i++){
-        imshow("original", imageList[i]);
-        imshow("downScaled", downScaledImage[i]);
-        imshow("cheapScale", cheapScaledImageList[i]);
-        imshow("RAISR", RAISRImageList[i]);
+        string currentOutPath = outPath + "/cheapScale_"+ imageNameList[i];
+        imwrite(currentOutPath, cheapScaledImageList[i]);
 
-        Mat LRDiff = cheapScaledImageList[i] - imageList[i];
-        Mat HRDiff = RAISRImageList[i] - imageList[i];
-        Mat enhenceDiff = cheapScaledImageList[i] - RAISRImageList[i];
-        double LRDiffvalue = sum(LRDiff)[0];
-        double HRDiffvalue = sum(HRDiff)[0];
+        currentOutPath = outPath + "/RAISR_" + imageNameList[i];
+        imwrite(currentOutPath, RAISRImageList[i]);
 
-        cout << "LRPixelDiffValue: "<< LRDiffvalue << " HRPixelDiffValue : "<< HRDiffvalue << endl;
+        currentOutPath = outPath + "/downScaled_" + imageNameList[i];
+        imwrite(currentOutPath, downScaledImageList[i]);
 
-//        debugMat(LRDiff);
-//        debugMat(HRDiff);
-//        debugMat(enhenceDiff);
-        waitKey(0);
     }
+
 
 }
